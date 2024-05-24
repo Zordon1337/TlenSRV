@@ -3,7 +3,7 @@ stwierdziłem że nie ma żadnego emulatora serwera do tego martwego komunikator
 
 
 ### Co działa?
-Statusy - wszystko dziala, pozatym że nie dodałem jeszcze customowych
+Statusy - wszystko dziala, pozatym że nie dodałem jeszcze customowych<br/>
 Wiadomości - działają
 
 ### Co planuje dodac?
