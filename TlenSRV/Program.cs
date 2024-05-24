@@ -91,6 +91,7 @@ class Program
                     continue;
                 }
                 data = Encoding.ASCII.GetString(bytes, 0, i);
+                Console.WriteLine(data);
                 cl = HandlePacket(data, cl);
                 if (!added && !string.IsNullOrEmpty(cl.mail))
                 {
@@ -181,25 +182,36 @@ class Program
     static void HandlePresence(string packet, Client cl)
     {
         bool sent = false;
-        foreach(var usr in users)
+        if(!packet.Contains("<show>"))
         {
-            if(!packet.Contains("unavailable") && !packet.Contains("invisible"))
+            var firstt = packet.Split("to=\"")[1];
+            var secondt = firstt.Split("\"")[0];
+            var cl2 = users.Find(x=>x.mail == secondt);
+            WriteReply(packet, cl2.ns);
+        } else
+        {
+            foreach (var usr in users)
             {
-                var firstb = packet.Split("<show>")[1];
-                var secondb = firstb.Split("</show>")[0];
-                WriteReply($"<presence from=\"{cl.mail}\"><show>{secondb}</show></presence>", usr.ns);
-                if(!sent)
-                    Console.WriteLine($"Presence {cl.mail}->{secondb}");
-                sent = true;
-            } else
-            {
-                WriteReply($"<presence from=\"{cl.mail}\"><show>unavailable</show></presence>", usr.ns);
-                if (!sent)
-                    Console.WriteLine($"Presence {cl.mail}->unavailable");
-                sent = true;
+                if (!packet.Contains("unavailable") && !packet.Contains("invisible"))
+                {
+                    var firstb = packet.Split("<show>")[1];
+                    var secondb = firstb.Split("</show>")[0];
+                    WriteReply($"<presence from=\"{cl.mail}\"><show>{secondb}</show></presence>", usr.ns);
+                    if (!sent)
+                        Console.WriteLine($"Presence {cl.mail}->{secondb}");
+                    sent = true;
+                }
+                else
+                {
+                    WriteReply($"<presence from=\"{cl.mail}\"><show>unavailable</show></presence>", usr.ns);
+                    if (!sent)
+                        Console.WriteLine($"Presence {cl.mail}->unavailable");
+                    sent = true;
+                }
+
             }
-            
         }
+        
     }
 
     static void HandleMessage(string packet, Client cl)
