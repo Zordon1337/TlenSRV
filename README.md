@@ -13,3 +13,4 @@ Screenshoty:
 
 ![image](https://github.com/Zordon1337/TlenSRV/assets/65111609/923472d2-46f4-408f-9a29-57714f0a645d)
 ![image](https://github.com/Zordon1337/TlenSRV/assets/65111609/c7d8032d-286a-4fbf-a773-5d5eed068229)
+![image](https://github.com/Zordon1337/TlenSRV/assets/65111609/b4e3549a-7f09-4b05-9812-9b25e556e59e)
