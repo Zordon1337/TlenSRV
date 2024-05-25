@@ -10,13 +10,15 @@ using static TlenSRV.Roster;
 
 class Program
 {
-    struct Client
+    public struct Client
     {
         public string mail;
+        public string password;
         public NetworkStream ns;
+        public List<Friend> roster;
     }
 
-    static List<Client> users = new List<Client>();
+    public static List<Client> users = new List<Client>();
 
     public static void WriteReply(string reply, NetworkStream ns)
     {
@@ -117,13 +119,10 @@ class Program
     {
         if (packet.Contains("</s>"))
         {
-            /*
-             * 
-             * client zakonczyl sesje
-             */
             HandleQuit(packet, cl);
             return cl;
         }
+
         string[] packets = packet.Split(new string[] { "</" }, StringSplitOptions.RemoveEmptyEntries);
         foreach (string packetPart in packets)
         {
@@ -133,7 +132,7 @@ class Program
             }
             else if (packetPart.Contains("<iq "))
             {
-                cl = HandleIQ(packetPart, cl);
+                cl = HandleIQ(packet, cl);
             }
             else if (packetPart.Contains("<presence"))
             {
@@ -143,7 +142,6 @@ class Program
             {
                 HandleMessage(packetPart, cl);
             }
-            
         }
         return cl;
     }
@@ -154,14 +152,12 @@ class Program
         {
             WriteReply($"<presence from=\"{cl.mail}\"><show>unavailable</show></presence>", usr.ns);
         }
-        users.Remove(cl);
         Console.WriteLine($"{cl.mail} wylogował się");
     }
 
     static void HandleStream(string packet, Client cl)
     {
         WriteReply("<s i=\"456C287C\" c=\"0\" s=\"0\">", cl.ns);
-        WriteReply("<iq type=\"result\" id=\"456C287C\"/>", cl.ns);
     }
 
     static Client HandleIQ(string packet, Client cl)
@@ -180,9 +176,19 @@ class Program
                     if (packet.Contains("<username>"))
                     {
                         var first = packet.Split("<username>")[1];
-                        var second = first.Split("</username>")[0];
-                        cl.mail = second + "@tlen.pl";
-                        Console.WriteLine($"Użytkownik {cl.mail} właśnie się zalogował");
+                        var username = first.Split("</username>")[0];
+                        var first2 = packet.Split("<digest>")[1];
+                        var digest = first2.Split("</digest>")[0];
+                        cl = User.LookupUser(username, digest, cl.ns);
+                        Console.WriteLine(digest);
+                        if (User.PassCheck(cl,digest))
+                        {
+                            Console.WriteLine($"Użytkownik {cl.mail} właśnie się zalogował");
+                            User.SendLoginSuccess(cl.ns);
+                        } else {
+                            Console.WriteLine($"Użytkownik {cl.mail} podał złe hasło");
+                            User.SendLoginFail(cl.ns);
+                        }
                         SendHello(cl);
                         foreach (var usr in users)
                         {
@@ -205,7 +211,7 @@ class Program
                     friend.group = "Administatorzy";
                     friend.subtype = SubTypes.both;
                     friends.Add(friend);
-                    Roster.SendRoster(friends, cl.ns);
+                    Roster.SendRoster(friends, cl.ns); 
                     break;
                 }
         }
