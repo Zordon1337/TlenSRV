@@ -5,7 +5,7 @@ stwierdziłem że nie ma żadnego emulatora serwera do tego martwego komunikator
 ### Co działa?
 Statusy - wszystko dziala, pozatym że nie dodałem jeszcze customowych<br/>
 Wiadomości - działają
-
+podstawowy roster, potrzeba tylko zaimplementowac dodawanie znajomych
 ### Co planuje dodac?
 nie wiem, rzeczy jest wiele do zrobienia ale narazie skupiam sie na: customowych statusach, dodawaniu znajomych i przesylaniem plikow
 
