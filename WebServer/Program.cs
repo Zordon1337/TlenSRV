@@ -3,7 +3,7 @@
 HttpListener http = new HttpListener();
 http.Prefixes.Add("http://idi.tlen.pl:80/");
 http.Start();
-string server = "localhost";
+string server = "192.168.10.1";
 string port = "25555";
 while(true)
 {

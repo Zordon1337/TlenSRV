@@ -22,9 +22,11 @@ class Program
 
     public static void WriteReply(string reply, NetworkStream ns)
     {
-        byte[] msg = Encoding.ASCII.GetBytes(reply);
-        ns.Write(msg, 0, msg.Length);
-        //Console.WriteLine($"Sent: {reply}");
+        if (ns != null && ns.CanWrite)
+        {
+            byte[] msg = Encoding.ASCII.GetBytes(reply);
+            ns.Write(msg, 0, msg.Length);
+        }
     }
 
     static void SendHello(Client cl)
@@ -47,7 +49,7 @@ class Program
         try
         {
             int port = 25555;
-            IPAddress localAddr = IPAddress.Parse("127.0.0.1");
+            IPAddress localAddr = IPAddress.Any;
             server = new TcpListener(localAddr, port);
             server.Start();
             Console.WriteLine("Serwer wystartował na porcie " + port);
@@ -83,6 +85,8 @@ class Program
         {
             try
             {
+                if (stream == null)
+                    return; // nie chcemy crashowac serwera, przy pisaniu do nie aktywnego streamu
                 if (!stream.DataAvailable)
                 {
                     Thread.Sleep(100);
@@ -97,15 +101,11 @@ class Program
                 data = Encoding.ASCII.GetString(bytes, 0, i);
                 Console.WriteLine(data);
                 cl = HandlePacket(data, cl);
-                if (!added && !string.IsNullOrEmpty(cl.mail))
-                {
-                    users.Add(cl);
-                    added = true;
-                }
+               
 
                 Array.Clear(bytes, 0, bytes.Length);
             }
-            catch (IOException ex)
+            catch (Exception ex)
             {
                 Console.WriteLine($"Client disconnected: {ex.Message}");
                 break;
@@ -173,26 +173,33 @@ class Program
              */
             case "456C287C":
                 {
-                    if (packet.Contains("<username>"))
+                    
+                    if (packet.Contains("<username>") && packet.StartsWith("<iq type=\"set\" id=\"456C287C\">"))
                     {
+                        Console.WriteLine(packet);
                         var first = packet.Split("<username>")[1];
                         var username = first.Split("</username>")[0];
                         var first2 = packet.Split("<digest>")[1];
                         var digest = first2.Split("</digest>")[0];
                         cl = User.LookupUser(username, digest, cl.ns);
                         Console.WriteLine(digest);
-                        if (User.PassCheck(cl,digest))
+                        if (User.PassCheck(cl, digest))
                         {
                             Console.WriteLine($"Użytkownik {cl.mail} właśnie się zalogował");
                             User.SendLoginSuccess(cl.ns);
-                        } else {
+                        }
+                        else
+                        {
                             Console.WriteLine($"Użytkownik {cl.mail} podał złe hasło");
                             User.SendLoginFail(cl.ns);
+                            return cl;
                         }
+
                         SendHello(cl);
                         foreach (var usr in users)
                         {
-                            WriteReply($"<presence from=\"{usr.mail}\"><show>available</show></presence>", cl.ns);
+                            if(usr.mail !=cl.mail)
+                                WriteReply($"<presence from=\"{usr.mail}\"><show>available</show></presence>", cl.ns);
                         }
                     }
                     break;
@@ -221,39 +228,29 @@ class Program
     static void HandlePresence(string packet, Client cl)
     {
         bool sent = false;
-        if(!packet.Contains("<show>"))
+        foreach (var usr in users)
         {
-            var firstt = packet.Split("to=\"")[1];
-            var secondt = firstt.Split("\"")[0];
-            var type1 = packet.Split("type=\"")[1];
-            var type2 = type1.Split("\"")[0];
-            var cl2 = users.Find(x=>x.mail == secondt);
-            if(type2 != "subscribed")
-                WriteReply($"<presence from=\"{cl.mail}\" type=\"subscribed\"/>", cl2.ns);
-        } else
-        {
-            foreach (var usr in users)
+            if (usr.mail == cl.mail)
+                continue; // nie chcemy wyslac informacji o zmianie stanu do siebie
+            if (!packet.Contains("unavailable") && !packet.Contains("invisible"))
             {
-                if (!packet.Contains("unavailable") && !packet.Contains("invisible"))
-                {
-                    var firstb = packet.Split("<show>")[1];
-                    var secondb = firstb.Split("</show>")[0];
-                    WriteReply($"<presence from=\"{cl.mail}\"><show>{secondb}</show></presence>", usr.ns);
-                    if (!sent)
-                        Console.WriteLine($"Presence {cl.mail}->{secondb}");
-                    sent = true;
-                }
-                else
-                {
-                    WriteReply($"<presence from=\"{cl.mail}\"><show>unavailable</show></presence>", usr.ns);
-                    if (!sent)
-                        Console.WriteLine($"Presence {cl.mail}->unavailable");
-                    sent = true;
-                }
-
+                var firstb = packet.Split("<show>")[1];
+                var secondb = firstb.Split("</show>")[0];
+                WriteReply($"<presence from=\"{cl.mail}\"><show>{secondb}</show></presence>", usr.ns);
+                if (!sent)
+                    Console.WriteLine($"Presence {cl.mail}->{secondb}");
+                sent = true;
+            }
+            else
+            {
+                WriteReply($"<presence from=\"{cl.mail}\"><show>unavailable</show></presence>", usr.ns);
+                if (!sent)
+                    Console.WriteLine($"Presence {cl.mail}->unavailable");
+                sent = true;
             }
         }
-        
+
+
     }
 
     static void HandleMessage(string packet, Client cl)
