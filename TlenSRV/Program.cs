@@ -5,6 +5,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using TlenSRV;
+using static TlenSRV.Roster;
 
 class Program
 {
@@ -16,7 +18,7 @@ class Program
 
     static List<Client> users = new List<Client>();
 
-    static void WriteReply(string reply, NetworkStream ns)
+    public static void WriteReply(string reply, NetworkStream ns)
     {
         byte[] msg = Encoding.ASCII.GetBytes(reply);
         ns.Write(msg, 0, msg.Length);
@@ -164,17 +166,48 @@ class Program
 
     static Client HandleIQ(string packet, Client cl)
     {
-        if (packet.Contains("<username>"))
+        var id = packet.Split("id=\"")[1];
+        var idfinal = id.Split("\"")[0];
+        switch(idfinal)
         {
-            var first = packet.Split("<username>")[1];
-            var second = first.Split("</username>")[0];
-            cl.mail = second + "@tlen.pl";
-            Console.WriteLine($"Użytkownik {cl.mail} właśnie się zalogował");
-            SendHello(cl);
-            foreach(var usr in users)
-            {
-                WriteReply($"<presence from=\"{usr.mail}\"><show>available</show></presence>", cl.ns);
-            }
+            /*
+             * 
+             * login?
+             * 
+             */
+            case "456C287C":
+                {
+                    if (packet.Contains("<username>"))
+                    {
+                        var first = packet.Split("<username>")[1];
+                        var second = first.Split("</username>")[0];
+                        cl.mail = second + "@tlen.pl";
+                        Console.WriteLine($"Użytkownik {cl.mail} właśnie się zalogował");
+                        SendHello(cl);
+                        foreach (var usr in users)
+                        {
+                            WriteReply($"<presence from=\"{usr.mail}\"><show>available</show></presence>", cl.ns);
+                        }
+                    }
+                    break;
+                }
+                /*
+                 * 
+                 * nie musze chyba tlumaczyc
+                 * 
+                 */
+            case "GetRoster":
+                {
+                    List<Friend> friends = new List<Friend>();
+                    Friend friend = new Friend();
+                    friend.jid = "admin@tlen.pl";
+                    friend.name = "Admin";
+                    friend.group = "Administatorzy";
+                    friend.subtype = SubTypes.both;
+                    friends.Add(friend);
+                    Roster.SendRoster(friends, cl.ns);
+                    break;
+                }
         }
         return cl;
     }
@@ -186,8 +219,11 @@ class Program
         {
             var firstt = packet.Split("to=\"")[1];
             var secondt = firstt.Split("\"")[0];
+            var type1 = packet.Split("type=\"")[1];
+            var type2 = type1.Split("\"")[0];
             var cl2 = users.Find(x=>x.mail == secondt);
-            WriteReply(packet, cl2.ns);
+            if(type2 != "subscribed")
+                WriteReply($"<presence from=\"{cl.mail}\" type=\"subscribed\"/>", cl2.ns);
         } else
         {
             foreach (var usr in users)
